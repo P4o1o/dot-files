@@ -26,7 +26,7 @@ shopt -s nullglob
 shopt -s autocd 2>/dev/null || true
 shopt -s dirspell 2>/dev/null || true
 
-# Autocompletion
+# Autocompletio Mac-OS
 
 if [[ -r /opt/homebrew/profile.d/bash_completion.sh ]]; then
 	source /opt/homebrew/profie.d/bash_completition.sh
