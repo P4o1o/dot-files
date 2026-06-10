@@ -2,8 +2,8 @@
 
 # Editor
 
-export EDITOR="vim"
-export VISUAL="vim"
+export EDITOR="nvim"
+export VISUAL="nvim"
 export PAGER="less"
 
 # History
@@ -30,10 +30,14 @@ shopt -s dirspell 2>/dev/null || true
 
 if [[ -r /opt/homebrew/profile.d/bash_completion.sh ]]; then
 	source /opt/homebrew/profie.d/bash_completition.sh
+elif [ -r /usr/share/bash-completion/bash_completion ]; then
+    source /usr/share/bash-completion/bash_completion
+elif [ -r /etc/bash_completion ]; then
+    source /etc/bash_completion
 fi
 
 # Command Prompt
-# [(exit codes)] <user> - <hostname> <uname> <cwd> [git branch] <$|#>
+# [(exit codes)] <user>@<hostname>#<uname>:<cwd> [git branch] <$|#>
 
 
 COLOR_RESET=
@@ -45,7 +49,17 @@ COLOR_BLUE=
 COLOR_CYAN=
 COLOR_YELLOW=
 
-if [[ -t 1 && ${TERM:-dumb} != dumb ]]; then
+if [[ -t 1 ]] && tput colors &>/dev/null && [[ "$(tput colors)" -ge 8 ]]; then
+    
+    if [ -x /usr/bin/dircolors ]; then
+        test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+        alias ls='ls --color=auto'
+        alias grep='grep --color=auto'
+    fi
+    
+    # colored GCC warnings and errors
+    export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+    
 	COLOR_RESET=$(tput sgr0 2>/dev/null)
 	COLOR_BOLD=$(tput bold 2>/dev/null)
 	COLOR_WHITE=$(tput setaf 7 2>/dev/null)
@@ -58,10 +72,10 @@ fi
 
 PROMPT_UNAME=$(uname)
 
-PS1='$( exit_code=$? ; (($exit_code!=0)) && echo "\[${COLOR_RED}\]($exit_code)\[${COLOR_RESET}\]" ) '
-PS1+='$( (( UID==0 )) && echo "\[${COLOR_RED}\]" )\u\[${COLOR_RESET}\] - '
-PS1+='\[${COLOR_GREEN}\]\h\[${COLOR_RESET}\] '
-PS1+='(\[${COLOR_BLUE}\]'"${PROMPT_UNAME}"'\[${COLOR_RESET}\]) '
-PS1+='\w '
-PS1+='$( branch=$( git rev-parse --abbrev-ref HEAD 2>/dev/null ); [[ -n $branch && $branch != HEAD ]] && echo "\[${COLOR_CYAN}\][git:$branch]\[${COLOR_RESET}\]" ) '
-PS1+='\[${COLOR_YELLOW}\]\$\[${COLOR_RESET}\] '
+PS1='$( exit_code=$? ; (($exit_code!=0)) && echo "\[${COLOR_RED}\]${exit_code}!" )'
+PS1+='\[${COLOR_CYAN}\]$( (( UID==0 )) && echo "\[${COLOR_RED}\]" )\u\[${COLOR_RESET}\]@'
+PS1+='\[${COLOR_GREEN}\]\h\[${COLOR_RESET}\]#'
+PS1+='(\[${COLOR_BLUE}\]'"${PROMPT_UNAME}"'\[${COLOR_RESET}\]):'
+PS1+='\w'
+PS1+='$( branch=$( git rev-parse --abbrev-ref HEAD 2>/dev/null ); [[ -n $branch && $branch != HEAD ]] && echo "\[${COLOR_CYAN}\][git:$branch]\[${COLOR_RESET}\]" )'
+PS1+='>'
