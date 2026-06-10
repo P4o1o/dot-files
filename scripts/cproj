@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+
+readonly CPROJ_VERSION="0.1.0"
+readonly TEMPLATE_DIR="${HOME}/.config/cproj"
+
+readonly ARGUMENT_ERROR=1
+readonly FILE_NOT_EXIST_ERROR=2
+readonly WRONG_TYPE_ERROR=3
+readonly MKDIR_ERROR=4
+readonly FILE_WRITE_ERROR=5
+readonly CP_ERROR=6
+readonly SED_ERROR=5
+
+error() { echo "$1" >&2; exit "$2"; }
+
+usage() {
+    cat <<EOF
+Usage: cproj [options] <project-name> [<path>]
+
+Create a minimal C project with optional build system templates.
+
+Options:
+  -h, --help                     Show this help
+  -v, --version                  Show version
+  -l, --list [system...]         List available templates (both if no arg)
+  -m, --make[=name]              Use Makefile template (default: 'base')
+  -c, --cmake[=name]             Use CMake template (default: 'base')
+  -t, --template=name            Use same template for both Makefile and CMake
+
+If no build system is requested, both Makefile and CMake are generated
+using the 'base' template.
+Templates are stored in:
+  ${TEMPLATE_DIR}/Makefile/<name>.template
+  ${TEMPLATE_DIR}/CMake/<name>.template
+EOF
+    exit 0
+}
+
+version() { echo "cproj version ${CPROJ_VERSION}"; exit 0; }
+
+list_templates() {
+    local system="$1" file
+    printf '%s templates:\n' "$system"
+    local dir="${TEMPLATE_DIR}/${system}"
+    if [[ -d "$dir" ]]; then
+        local found=0
+        for file in "$dir"/*.template; do
+            [[ -f "$file" ]] || continue
+            printf '  %s\n' "$(basename "$file" .template)"
+            found=1
+        done
+        (( found == 0 )) && echo '  (none)'
+    else
+        echo '  (directory missing)'
+    fi
+    echo
+}
+
+list() {
+    # If no arguments, list both; otherwise list each requested system
+    if [[ $# -eq 0 ]]; then
+        list_templates 'Makefile'
+        list_templates 'CMake'
+    else
+        for sys in "$@"; do
+            case "$sys" in
+                m|M|make|Makefile) list_templates 'Makefile' ;;
+                c|cmake|CMake)     list_templates 'CMake' ;;
+                *) error "Unknown build system: $sys. Use -h for help." $ARGUMENT_ERROR ;;
+            esac
+        done
+    fi
+    exit 0
+}
+
+# Default: both Makefile and CMake, base template
+use_makefile=false
+use_cmake=false
+makefile_template='base'
+cmake_template='base'
+
+[[ $# -eq 0 ]] && usage
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage ;;
+        -v|--version) version ;;
+        -l|--list)
+            shift 
+            list "$@"
+        ;;
+        --template=*)
+            use_makefile=true
+            use_cmake=true
+            t="${1#--template=}"
+            makefile_template="$t"
+            cmake_template="$t"
+        ;;
+        -t=*)
+            use_makefile=true
+            use_cmake=true
+            t="${1#-t=}"
+            makefile_template="$t"
+            cmake_template="$t"
+        ;;
+        --make=*) use_makefile=true; makefile_template="${1#--make=}" ;;
+        -m=*)     use_makefile=true; makefile_template="${1#-m=}" ;;
+        -m|--make) use_makefile=true ;;
+        --cmake=*) use_cmake=true; cmake_template="${1#--cmake=}" ;;
+        -c=*)      use_cmake=true; cmake_template="${1#-c=}" ;;
+        -c|--cmake) use_cmake=true ;;
+        --install) mkdir -p "$TEMPLATE_DIR" || error "Can't create the template directory $TEMPLATE_DIR" $MKDIR_ERROR ;;
+        -*) error "Unknown option: $1" $ARGUMENT_ERROR ;;
+        *)
+            project_name="$1"
+            project_path="${2:-.}"
+            break ;;
+    esac
+    shift
+done
+
+# Default if nothing explicitly requested
+if ! $use_makefile && ! $use_cmake; then
+    use_makefile=true
+    use_cmake=true
+fi
+
+[[ -n "${project_name:-}" ]] || error "Missing project name. Use -h for help." $ARGUMENT_ERROR
+
+# Validate path
+if [[ ! -e "$project_path" ]]; then
+    error "Directory '${project_path}' does not exist" $FILE_NOT_EXIST_ERROR
+elif [[ ! -d "$project_path" ]]; then
+    error "'${project_path}' is not a directory" $WRONG_TYPE_ERROR
+fi
+
+# Create project directories
+mkdir -p "${project_path}/src" "${project_path}/include" || \
+    error "Cannot create src/ and include/ inside '${project_path}'" $MKDIR_ERROR
+
+# Apply a template file (cross‑platform sed)
+apply_template() {
+    local system="$1" tname="$2" dest="$3"
+    local src="${TEMPLATE_DIR}/${system}/${tname}.template"
+
+    [[ -f "$src" ]] || error "Template '${tname}' for ${system} not found: ${src}" $FILE_NOT_EXIST_ERROR
+    cp "$src" "${project_path}/${dest}" || error "Failed to copy ${system} template" $CP_ERROR
+
+    # Portable sed: use -i.bak (works on both GNU and BSD) and then remove backup
+    if sed -i.bak "s/__EXECUTABLE__/${project_name}/g" "${project_path}/${dest}"; then
+        rm -f "${project_path}/${dest}.bak"
+    else
+        error "Failed to set executable name in ${dest}" $SED_ERROR
+    fi
+}
+
+if $use_makefile; then apply_template 'Makefile' "$makefile_template" 'Makefile'; fi
+if $use_cmake; then   apply_template 'CMake'    "$cmake_template"    'CMakeLists.txt'; fi
+
+# .gitignore
+cat > "${project_path}/.gitignore" <<EOF || error "Failed writing .gitignore" $FILE_WRITE_ERROR
+bin
+${project_name}
+asm
+EOF
+
+# src/main.c
+cat > "${project_path}/src/main.c" <<EOF || error "Failed writing src/main.c" $FILE_WRITE_ERROR
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    return 0;
+}
+EOF
+
+echo "Project '${project_name}' created successfully in '${project_path}'."
