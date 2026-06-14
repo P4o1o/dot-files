@@ -36,18 +36,21 @@ elif [ -r /etc/bash_completion ]; then
     source /etc/bash_completion
 fi
 
+if [[ -r ~/.bash_aliases ]]; then
+    source ~/.bash_aliases
+fi
+
+if [[ -d ~/.bash.aliases.d ]]; then
+    for file in ~/.bash.aliases.d/*; do
+        [[ -r $file ]] && source "$file"
+    done
+fi
+
 # Command Prompt
 # [(exit codes)] <user>@<hostname>#<uname>:<cwd> [git branch] <$|#>
 
 
-COLOR_RESET=
-COLOR_BOLD=
-COLOR_WHITE=
-COLOR_RED=
-COLOR_GREEN=
-COLOR_BLUE=
-COLOR_CYAN=
-COLOR_YELLOW=
+UNAME=$(uname)
 
 if [[ -t 1 ]] && tput colors &>/dev/null && [[ "$(tput colors)" -ge 8 ]]; then
     
@@ -60,22 +63,27 @@ if [[ -t 1 ]] && tput colors &>/dev/null && [[ "$(tput colors)" -ge 8 ]]; then
     # colored GCC warnings and errors
     export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
     
-	COLOR_RESET=$(tput sgr0 2>/dev/null)
-	COLOR_BOLD=$(tput bold 2>/dev/null)
-	COLOR_WHITE=$(tput setaf 7 2>/dev/null)
-	COLOR_RED=$(tput setaf 1 2>/dev/null)
-	COLOR_GREEN=$(tput setaf 2 2>/dev/null)
-	COLOR_BLUE=$(tput setaf 4 2>/dev/null)
-	COLOR_CYAN=$(tput setaf 6 2>/dev/null)
-	COLOR_YELLOW=$(tput setaf 3 2>/dev/null)
+	COLOR_RESET="$(tput sgr0 2>/dev/null)"
+	COLOR_BOLD="$(tput bold 2>/dev/null)"
+	COLOR_WHITE="$(tput setaf 7 2>/dev/null)"
+	COLOR_RED="$(tput setaf 1 2>/dev/null)"
+	COLOR_GREEN="$(tput setaf 2 2>/dev/null)"
+	COLOR_BLUE="$(tput setaf 4 2>/dev/null)"
+	COLOR_CYAN="$(tput setaf 6 2>/dev/null)"
+	COLOR_YELLOW="$(tput setaf 3 2>/dev/null)"
+
+    PS1='$( exit_code=$? ; (($exit_code!=0)) && echo "\[${COLOR_RED}\]${exit_code}!" )'
+    PS1+='\[${COLOR_CYAN}\]$( (( UID==0 )) && echo "\[${COLOR_RED}\]" )\u\[${COLOR_RESET}\]@'
+    PS1+='\[${COLOR_GREEN}\]\h\[${COLOR_RESET}\]#'
+    PS1+='\[${COLOR_BLUE}\]${UNAME}\[${COLOR_RESET}\]:'
+    PS1+='\w'
+    PS1+='$( branch=$( git rev-parse --abbrev-ref HEAD 2>/dev/null ); [[ -n $branch && $branch != HEAD ]] && echo "\[${COLOR_CYAN}\][git:$branch]\[${COLOR_RESET}\]" )'
+    PS1+='$>'
+else
+
+    PS1='$( exit_code=$? ; (($exit_code!=0)) && echo "${exit_code}!" )'
+    PS1+='\u@\h#${UNAME}:\w'
+    PS1+='$( branch=$( git rev-parse --abbrev-ref HEAD 2>/dev/null ); [[ -n $branch && $branch != HEAD ]] && echo "[git:$branch]" )'
+    PS1+='$>'
+
 fi
-
-PROMPT_UNAME=$(uname)
-
-PS1='$( exit_code=$? ; (($exit_code!=0)) && echo "\[${COLOR_RED}\]${exit_code}!" )'
-PS1+='\[${COLOR_CYAN}\]$( (( UID==0 )) && echo "\[${COLOR_RED}\]" )\u\[${COLOR_RESET}\]@'
-PS1+='\[${COLOR_GREEN}\]\h\[${COLOR_RESET}\]#'
-PS1+='(\[${COLOR_BLUE}\]'"${PROMPT_UNAME}"'\[${COLOR_RESET}\]):'
-PS1+='\w'
-PS1+='$( branch=$( git rev-parse --abbrev-ref HEAD 2>/dev/null ); [[ -n $branch && $branch != HEAD ]] && echo "\[${COLOR_CYAN}\][git:$branch]\[${COLOR_RESET}\]" )'
-PS1+='>'
