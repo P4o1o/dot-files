@@ -1,29 +1,11 @@
--- ============================================================
--- Native Neovim config: zero plugins, zero Mason
+--- Native Neovim config
 -- Target: Neovim >= 0.11
--- Languages: Python, C/C++, Rust, Bash
--- No Zig LSP. No Assembly LSP.
---
--- Required external programs: none.
--- Optional LSP binaries:
---   pylsp          Python
---   clangd         C/C++
---   rust-analyzer  Rust
---
--- Disable all LSPs:       NVIM_NO_LSP=1 nvim
--- Disable Python LSP:     NVIM_NO_PY_LSP=1 nvim
--- Disable C/C++ LSP:      NVIM_NO_C_LSP=1 nvim
--- Disable Rust LSP:       NVIM_NO_RUST_LSP=1 nvim
--- ============================================================
+-- LSPs: Python, C/C++, Rust
 
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
 local opt = vim.opt
-
--- ------------------------------------------------------------
--- Base options
--- ------------------------------------------------------------
 
 opt.number = true
 opt.relativenumber = true
@@ -48,17 +30,14 @@ opt.splitbelow = true
 opt.updatetime = 250
 opt.timeoutlen = 400
 
--- Native completion menu. No nvim-cmp.
 opt.completeopt = { "menu", "menuone", "noselect" }
 opt.pumheight = 12
 
--- Light disk behavior.
 opt.swapfile = false
 opt.backup = false
 opt.writebackup = false
 opt.undofile = true
 
--- Native :find support.
 opt.path:append("**")
 opt.wildmenu = true
 opt.wildignore:append({
@@ -76,7 +55,6 @@ opt.wildignore:append({
 
 vim.filetype.add({
   extension = {
-    -- Syntax/filetype only. No Assembly LSP is configured.
     asm = "asm",
     s = "asm",
     S = "asm",
@@ -89,10 +67,6 @@ vim.filetype.add({
 vim.cmd("filetype plugin indent on")
 vim.cmd("syntax enable")
 pcall(vim.cmd.colorscheme, "habamax")
-
--- ------------------------------------------------------------
--- Helpers
--- ------------------------------------------------------------
 
 local function env_true(name)
   local value = vim.env[name]
@@ -121,12 +95,8 @@ local function unique_insert(tbl, value)
   table.insert(tbl, value)
 end
 
--- ------------------------------------------------------------
--- Native keymaps
--- ------------------------------------------------------------
-
 vim.keymap.set("n", "<leader>e", "<cmd>Explore<CR>", {
-  desc = "Native file explorer",
+  desc = "File explorer",
 })
 
 vim.keymap.set("n", "<leader>ff", function()
@@ -135,7 +105,7 @@ vim.keymap.set("n", "<leader>ff", function()
     vim.cmd("find " .. vim.fn.fnameescape(name))
   end
 end, {
-  desc = "Find file with native :find",
+  desc = "Find file",
 })
 
 vim.keymap.set("n", "<leader>fb", "<cmd>buffers<CR>:buffer ", {
@@ -156,31 +126,25 @@ vim.api.nvim_create_user_command("Grep", function(opts_cmd)
   vim.cmd("copen")
 end, {
   nargs = "*",
-  desc = "Search text with native vimgrep, no ripgrep needed",
+  desc = "Search text",
 })
 
 vim.keymap.set("n", "<leader>fg", function()
   vim.cmd("Grep")
 end, {
-  desc = "Native text search",
+  desc = "Search text",
 })
 
 vim.keymap.set("n", "<leader>w", "<cmd>write<CR>", { desc = "Save" })
 vim.keymap.set("n", "<leader>q", "<cmd>quit<CR>", { desc = "Quit" })
 vim.keymap.set("n", "<leader>h", "<cmd>nohlsearch<CR>", { desc = "Clear search highlight" })
 
--- Native completion.
--- LSP omnifunc when an LSP is attached; normal Ctrl-n/Ctrl-p still work.
 vim.keymap.set("i", "<C-Space>", "<C-x><C-o>", {
-  desc = "Native LSP completion",
+  desc = "LSP completion",
 })
 vim.keymap.set("i", "<C-@>", "<C-x><C-o>", {
-  desc = "Native LSP completion",
+  desc = "LSP completion",
 })
-
--- ------------------------------------------------------------
--- Diagnostics
--- ------------------------------------------------------------
 
 vim.diagnostic.config({
   virtual_text = {
@@ -202,10 +166,6 @@ vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" }
 vim.keymap.set("n", "<leader>dl", vim.diagnostic.open_float, { desc = "Line diagnostic" })
 vim.keymap.set("n", "<leader>dq", vim.diagnostic.setloclist, { desc = "Diagnostic list" })
 
--- ------------------------------------------------------------
--- Native LSP, no nvim-lspconfig
--- ------------------------------------------------------------
-
 if not env_true("NVIM_NO_LSP") then
   vim.api.nvim_create_autocmd("LspAttach", {
     callback = function(event)
@@ -213,7 +173,6 @@ if not env_true("NVIM_NO_LSP") then
       local client = vim.lsp.get_client_by_id(event.data.client_id)
 
       if client then
-        -- Keep it light. Syntax highlighting stays native.
         client.server_capabilities.semanticTokensProvider = nil
       end
 
@@ -235,13 +194,12 @@ if not env_true("NVIM_NO_LSP") then
       map("n", "<leader>ca", vim.lsp.buf.code_action, "Code action")
       map("n", "<leader>f", function()
         vim.lsp.buf.format({ async = true })
-      end, "LSP format")
+      end, "Format")
     end,
   })
 
   local servers = {}
 
-  -- Python: optional, enabled by default if pylsp exists.
   if not env_true("NVIM_NO_PY_LSP") and executable("pylsp") then
     vim.lsp.config("pylsp", {
       cmd = { "pylsp" },
@@ -256,7 +214,6 @@ if not env_true("NVIM_NO_LSP") then
       settings = {
         pylsp = {
           plugins = {
-            -- Keep pylsp light: Jedi only, no optional formatters/linters.
             pycodestyle = { enabled = false },
             pyflakes = { enabled = false },
             mccabe = { enabled = false },
@@ -277,7 +234,6 @@ if not env_true("NVIM_NO_LSP") then
     table.insert(servers, "pylsp")
   end
 
-  -- C/C++: optional, enabled by default if clangd exists.
   if not env_true("NVIM_NO_C_LSP") then
     local clangd_bin = first_executable({
       "/opt/homebrew/opt/llvm/bin/clangd",
@@ -313,7 +269,6 @@ if not env_true("NVIM_NO_LSP") then
     end
   end
 
-  -- Rust: optional, enabled by default if rust-analyzer exists.
   if not env_true("NVIM_NO_RUST_LSP") and executable("rust-analyzer") then
     vim.lsp.config("rust_analyzer", {
       cmd = { "rust-analyzer" },
@@ -330,15 +285,10 @@ if not env_true("NVIM_NO_LSP") then
     table.insert(servers, "rust_analyzer")
   end
 
-
   if #servers > 0 then
     vim.lsp.enable(servers)
   end
 end
-
--- ------------------------------------------------------------
--- Info command
--- ------------------------------------------------------------
 
 vim.api.nvim_create_user_command("NvimNativeInfo", function()
   local lsp_disabled = env_true("NVIM_NO_LSP")
@@ -368,19 +318,14 @@ vim.api.nvim_create_user_command("NvimNativeInfo", function()
   })
 
   local lines = {
-    "Profile: native LSP, no Assembly LSP",
-    "Plugins: 0",
-    "Mason: no",
-    "AI: no",
-    "Zig LSP: removed",
-    "Assembly LSP: removed",
-    "Completion: native (<C-x><C-o> / <C-Space>)",
+    "Profile: native LSP",
+    "Completion: <C-x><C-o> / <C-Space>",
     "LSP active in buffer: " .. (lsp_disabled and "disabled by NVIM_NO_LSP=1" or (#names > 0 and table.concat(names, ", ") or "none")),
-    "pylsp installed: " .. yes_no(executable("pylsp")) .. "; disabled: " .. yes_no(env_true("NVIM_NO_PY_LSP")),
-    "clangd installed: " .. yes_no(clangd_bin ~= nil) .. (clangd_bin and (" (" .. clangd_bin .. ")") or "") .. "; disabled: " .. yes_no(env_true("NVIM_NO_C_LSP")),
-    "rust-analyzer installed: " .. yes_no(executable("rust-analyzer")) .. "; disabled: " .. yes_no(env_true("NVIM_NO_RUST_LSP")),
-    "Explorer: netrw (:Explore)",
-    "Grep: :Grep with native vimgrep",
+    "pylsp: installed " .. yes_no(executable("pylsp")) .. "; disabled " .. yes_no(env_true("NVIM_NO_PY_LSP")),
+    "clangd: installed " .. yes_no(clangd_bin ~= nil) .. (clangd_bin and (" (" .. clangd_bin .. ")") or "") .. "; disabled " .. yes_no(env_true("NVIM_NO_C_LSP")),
+    "rust-analyzer: installed " .. yes_no(executable("rust-analyzer")) .. "; disabled " .. yes_no(env_true("NVIM_NO_RUST_LSP")),
+    "Explorer: :Explore",
+    "Search: :Grep",
   }
 
   vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
