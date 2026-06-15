@@ -46,6 +46,12 @@ if [[ -d ~/.bash.aliases.d ]]; then
     done
 fi
 
+
+if [[ -d ~/.bem/bin ]]; then
+    export PATH="~/.bem/bin:$PATH"
+    source ~/.bem/bem_completion
+fi
+
 # Command Prompt
 # [(exit codes)] <user>@<hostname>#<uname>:<cwd> [git branch] <$|#>
 
