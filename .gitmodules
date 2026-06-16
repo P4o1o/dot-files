@@ -1,0 +1,12 @@
+[submodule "bem/bem"]
+	path = bem/bem
+	url = git@github.com:P4o1o/bem.git
+[submodule "bem/sources/pvenv"]
+	path = bem/sources/pvenv
+	url = git@github.com:P4o1o/pvenv.git
+[submodule "bem/sources/ansicolor"]
+	path = bem/sources/ansicolor
+	url = git@github.com:P4o1o/ansicolor.git
+[submodule "bem/programs/ansicolor"]
+	path = bem/programs/ansicolor
+	url = git@github.com:P4o1o/ansicolor.git
