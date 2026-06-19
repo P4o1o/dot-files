@@ -1,12 +1,12 @@
-[submodule "bem/bem"]
-	path = bem/bem
+[submodule "programs/bem"]
+	path = programs/bem
 	url = git@github.com:P4o1o/bem.git
-[submodule "bem/sources/pvenv"]
-	path = bem/sources/pvenv
+[submodule "scripts/pvenv"]
+	path = scripts/pvenv
 	url = git@github.com:P4o1o/pvenv.git
-[submodule "bem/sources/ansicolor"]
-	path = bem/sources/ansicolor
+[submodule "programs/ansicolor"]
+	path = programs/ansicolor
 	url = git@github.com:P4o1o/ansicolor.git
-[submodule "bem/programs/ansicolor"]
-	path = bem/programs/ansicolor
-	url = git@github.com:P4o1o/ansicolor.git
+[submodule "programs/cproj"]
+	path = programs/cproj
+	url = git@github.com:P4o1o/cproj.git
