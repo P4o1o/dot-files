@@ -1,19 +1,39 @@
 #!/usr/bin/env bash
 
-mantain_locals=false
+preserve_locals=false
 full_install=false
 minimal_install=false
 
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Install configuration files and optional components.
+
+Options:
+  -m, --minimal       Perform only the minimal installation
+  -f, --full          Perform the full installation, including BEM
+  -p, --preserve      Preserve existing local configuration files
+  -h, --help          Show this help message and exit
+
+Examples:
+  $(basename "$0")
+  $(basename "$0") --minimal
+  $(basename "$0") --full --preserve
+  $(basename "$0") -fp
+EOF
+}
+
 while (($# > 0)); do
     if [[ $1 == --* ]]; then
-        case $1 in
+        case "$1" in
             --minimal)
-                minimale_install=true
+                minimal_install=true
                 ;;
             --full)
                 full_install=true
                 ;;
-            --presevre)
+            --preserve)
                 preserve_locals=true
                 ;;
             --help)
@@ -21,22 +41,25 @@ while (($# > 0)); do
                 exit 0
                 ;;
             *)
-                echo "Unknown option $1" >&2
+                echo "Unknown option: $1" >&2
                 usage >&2
                 exit 64
-            ;;
+                ;;
         esac
+
     elif [[ $1 == -* ]]; then
         opt_len=${#1}
+
         for ((char = 1; char < opt_len; char++)); do
             opt=${1:char:1}
-            case opt in
+
+            case "$opt" in
                 h)
                     usage
                     exit 0
                     ;;
                 m)
-                    minimale_install=true
+                    minimal_install=true
                     ;;
                 f)
                     full_install=true
@@ -45,53 +68,79 @@ while (($# > 0)); do
                     preserve_locals=true
                     ;;
                 *)
-                    echo "Unknown option -$1" >&2
+                    echo "Unknown option: -$opt" >&2
                     usage >&2
                     exit 64
                     ;;
             esac
         done
+
     else
-        echo "Unknown option $1" >&2
+        echo "Unknown argument: $1" >&2
         usage >&2
         exit 64
     fi
+
     shift
 done
 
-if [[ -f ~/.bashrc ]]; then
-    if $mantain_locals; then
+
+# bashrc
+
+if [[ -f ~/.bashrc ]]; then
+    if $preserve_locals; then
         cp ~/.bashrc ~/.bashrc.local
     else
-        rm  ~/.bashrc
-    fi
-fi
-if [[ -f ~/.bash_aliases ]]; then
-    if $mantain_locals; then
-        mkdir -p ~/.bash_aliases.d
-        cp ~/.bash_alias ~/.bash_aliases.d/bash_aliases.local
-    else
-        rm  ~/.bash_aliases
+        rm ~/.bashrc
     fi
 fi
 
-ln bashrc ~/.bashrc
-ln bash_aliases ~/.bash_aliases
+
+# bash aliases
+
+if [[ -f ~/.bash_aliases ]]; then
+    if $preserve_locals; then
+        mkdir -p ~/.bash_aliases.d
+        cp ~/.bash_aliases ~/.bash_aliases.d/bash_aliases.local
+    else
+        rm ~/.bash_aliases
+    fi
+fi
+
+
+# Install bash configuration
+
+ln -s bashrc ~/.bashrc
+ln -s bash_aliases ~/.bash_aliases
+
+
+# Minimal installation stops here
 
 $minimal_install && exit 0
 
-if [[ -f ~/.config/nvim/init.lua ]]; then 
+
+# Neovim
+
+mkdir -p ~/.config/nvim
+
+if [[ -f ~/.config/nvim/init.lua ]]; then
     rm ~/.config/nvim/init.lua
 fi
 
-ln nvim/init.lua ~/.config/nvim/init.lua
+ln -s nvim/init.lua ~/.config/nvim/init.lua
+
+
+# Standard installation stops here
 
 $full_install || exit 0
 
-./bem/bem/bem init > /dev/null
-error=$0
-if ((error != 0)); then
-    echo "ERROR: cannot install bem" >&2
-    exit $error
-fi
 
+# Full installation: BEM
+
+./bem/bem/bem init > /dev/null
+error=$?
+
+if (( error != 0 )); then
+    echo "ERROR: cannot install bem" >&2
+    exit "$error"
+fi
